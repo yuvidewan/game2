@@ -1,0 +1,17 @@
+# Python
+/venv/
+/env/
+/env1/
+__pycache__/
+*.pyc
+
+# FastAPI
+.env
+
+# Frontend
+node_modules/
+dist/
+
+# OS
+.DS_Store
+Thumbs.db 
