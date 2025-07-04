@@ -70,4 +70,11 @@ async def detect_gesture(file: UploadFile = File(...)):
             }
             return JSONResponse({"gestures": gestures})
         else:
-            return JSONResponse({"gestures": {}})
+            gestures = {
+                "mouth_open": False,
+                "eyebrow_raise": False,
+                "blink": False,
+                "head_direction": "center"
+            }
+            return JSONResponse({"gestures": gestures})
+

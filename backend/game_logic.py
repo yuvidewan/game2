@@ -40,8 +40,9 @@ def check_collision(player_action, obstacle):
         return False
     if obstacle == 'guard' and player_action == 'gadget':
         return False
-    if obstacle == 'trapdoor' and player_action == 'move':
+    if obstacle == 'trapdoor' and player_action in ['move_left', 'move_right']:
         return False
+
     return True  # Collision if not handled
 
 

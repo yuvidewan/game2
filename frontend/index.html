@@ -5,6 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Face Heist: The Museum Escape</title>
     <style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+  }
+  #three-canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+  }
+</style>
+
+    <style>
         body { background: #181818; color: #fff; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; }
         #main-ui { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; }
         #level { position: absolute; top: 20px; left: 30px; font-size: 2em; background: rgba(0,0,0,0.5); padding: 10px 30px; border-radius: 12px; pointer-events: auto; }
@@ -31,5 +46,13 @@
     <script src="https://unpkg.com/three@0.125.2/build/three.min.js"></script>
     <script src="OrbitControls.js"></script>
     <script src="game.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        if (!document.getElementById("three-canvas")) {
+            console.error("Canvas element not found!");
+        }
+    });
+</script>
+
 </body>
 </html> 
