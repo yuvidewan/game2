@@ -46,11 +46,17 @@ pip install -r requirements.txt
 
 ### 3. Start the backend server
 ```bash
-uvicorn backend.main:app --reload
+cd backend/
+uvicorn main:app --reload
+```
+### 4. Start the frontend server
+```bash
+cd frontend/
+python -m http.server 8080
 ```
 
-### 4. Start the frontend
-Open `frontend/index.html` in your browser.
+### 5. Start the frontend
+Open `localhost:8080` in your browser.
 
 ## Project Structure
 - `backend/` - FastAPI backend for gesture processing and game logic
@@ -58,4 +64,4 @@ Open `frontend/index.html` in your browser.
 - `requirements.txt` - Python dependencies
 
 ## License
-MIT 
+YUVI & ADITYA

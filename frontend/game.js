@@ -1,424 +1,267 @@
-const API_URL = 'http://localhost:8000';
+// === First-Person Endless Runner: Smash Hit Style ===
+// Uses: Three.js, GLTFLoader, webcam gesture backend
+// Player moves forward in a corridor, dodges obstacles with head gestures
 
-let levelNum = 0;
-let levelData = null;
-let obstacles = [];
-let player = { x: 0, y: 0, z: 0, mesh: null, state: 'idle', gadgetCooldown: 0 };
-let score = 0;
-let gameActive = false;
-let gestureState = getDefaultGestures();
-let obstacleIndex = 0;
-let scene, camera, renderer, controls, ambientLight, spotLight;
-let obstacleMeshes = [];
-let animating = false;
-let backgroundMusic;
+const API_URL = "http://localhost:8000";
 
-const canvas = document.getElementById('three-canvas');
-const statusDiv = document.getElementById('status');
-const levelDiv = document.getElementById('level');
-const scoreDiv = document.getElementById('score');
-const tutorialDiv = document.getElementById('tutorial');
-const loadingDiv = document.getElementById('loading');
+// --- Globals ---
+let scene, camera, renderer, clock;
+let corridorSegments = [], obstacles = [], collectibles = [];
+let gestureState = {};
+let gameState = "start", score = 0, distance = 0, speed = 0.5;
+let sounds = {};
+const SEGMENT_LENGTH = 40;
+const OBSTACLE_INTERVAL = 18;
+const PLAYER_HEIGHT = 2;
+const PLAYER_RADIUS = 0.8;
+let targetCameraX = 0, targetCameraY = 2;
+let cameraSpeed = 0.2; // Start slow
+let cameraSpeedTarget = 0.2;
+const MAX_AHEAD_SEGMENTS = 4;
+const SEGMENT_AHEAD_DISTANCE = SEGMENT_LENGTH * MAX_AHEAD_SEGMENTS;
 
-// function playMusic() {
-//     backgroundMusic = new Audio('music/background.mp3');
-//     backgroundMusic.loop = true;
-//     backgroundMusic.volume = 0.3;
-//     backgroundMusic.play().catch(() => {
-//         console.warn("Background music failed to play automatically.");
-//     });
-// }
+// --- UI Elements ---
+const canvas = document.getElementById("game-canvas");
+const statusDiv = document.getElementById("status");
+const levelDiv = document.getElementById("level");
+const scoreDiv = document.getElementById("score");
+const tutorialDiv = document.getElementById("tutorial");
 
-function showLoading(show) {
-    loadingDiv.style.display = show ? 'flex' : 'none';
+init();
+
+document.addEventListener("keydown", startGameListener);
+
+function startGameListener(e) {
+  if (gameState === "start" && e.code === "Space") {
+    startGame();
+  }
+  if (gameState === "over" && e.code === "Space") {
+    restartGame();
+  }
 }
 
-function showTutorial(controls, tips) {
-    tutorialDiv.innerHTML = `<h2>How to Play</h2><ul>${controls.map(c => `<li><b>${c.gesture}</b>: ${c.action}</li>`).join('')}</ul><h3>Tips</h3><ul>${tips.map(t => `<li>${t}</li>`).join('')}</ul><button id='closeTutorial'>Start Heist!</button>`;
-    tutorialDiv.style.display = 'block';
-    document.getElementById('closeTutorial').onclick = () => {
-        tutorialDiv.style.display = 'none';
-        startGame();
+function init() {
+  scene = new THREE.Scene();
+  clock = new THREE.Clock();
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.set(0, PLAYER_HEIGHT, 0);
+
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.setClearColor(0xf4f6fa); // Force light background
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+  dirLight.position.set(10, 20, 10);
+  dirLight.castShadow = true;
+  scene.add(dirLight);
+
+  sounds.hit = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_115b9bfae2.mp3");
+  sounds.collect = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_115b9bfae2.mp3");
+
+  fetch(`${API_URL}/tutorial`).then(res => res.json()).then(data => {
+    tutorialDiv.innerHTML = `<b>Controls:</b><ul>${data.controls.map(c => `<li>${c.gesture}: ${c.action}</li>`).join("")}</ul><b>Tips:</b> ${data.tips.join(", ")}`;
+  });
+
+  resetGame();
+  startWebcamCapture();
+  animate();
+}
+
+function resetGame() {
+  // Remove all objects except lights
+  for (let i = scene.children.length - 1; i >= 0; i--) {
+    if (!(scene.children[i] instanceof THREE.Light)) scene.remove(scene.children[i]);
+  }
+  corridorSegments = [];
+  obstacles = [];
+  collectibles = [];
+  score = 0;
+  distance = 0;
+  speed = 0.5;
+  camera.position.set(0, PLAYER_HEIGHT, 0);
+  gameState = "start";
+  levelDiv.textContent = "POV RUNNER";
+  scoreDiv.textContent = `Score: 0 | Distance: 0m`;
+  statusDiv.textContent = "Press Space or Blink to Start!";
+  // Initial corridor
+  const loader = new THREE.GLTFLoader();
+  for (let i = 0; i < 4; i++) {
+    addCorridorSegment(loader, -i * SEGMENT_LENGTH);
+  }
+  for (let i = 0; i < 3; i++) {
+    addObstacle(loader, -OBSTACLE_INTERVAL - i * OBSTACLE_INTERVAL);
+  }
+}
+
+function startGame() {
+  gameState = "play";
+  statusDiv.textContent = "Go!";
+}
+
+function restartGame() {
+  resetGame();
+  startGame();
+}
+
+function addCorridorSegment(loader, z) {
+  loader.load("assets/models/museum.glb", gltf => {
+    let segment = gltf.scene;
+    // Remove background/environment meshes if present
+    segment.traverse(child => {
+      if (child.isMesh && (child.name.toLowerCase().includes("background") || child.name.toLowerCase().includes("sky"))) {
+        segment.remove(child);
+      }
+    });
+    segment.scale.set(4, 4, SEGMENT_LENGTH / 10);
+    segment.position.set(0, 0, z - SEGMENT_LENGTH / 2);
+    scene.add(segment);
+    scene.environment = null; // Remove any environment map
+    corridorSegments.push(segment);
+  });
+}
+
+function addObstacle(loader, z) {
+  // Randomly choose obstacle type: laser or guard
+  if (Math.random() > 0.5) {
+    loader.load("assets/models/laser.glb", gltf => {
+      let laser = gltf.scene;
+      laser.position.set(-4 + Math.floor(Math.random() * 3) * 4, 1, z);
+      laser.castShadow = true;
+      scene.add(laser);
+      obstacles.push({ obj: laser, type: "laser" });
+    });
+  } else {
+    loader.load("assets/models/guard.glb", gltf => {
+      let guard = gltf.scene;
+      guard.position.set(-4 + Math.floor(Math.random() * 3) * 4, 0, z);
+      guard.castShadow = true;
+      scene.add(guard);
+      obstacles.push({ obj: guard, type: "guard" });
+    });
+  }
+  // Add collectibles
+  let coin = new THREE.Mesh(
+    new THREE.SphereGeometry(0.4, 16, 16),
+    new THREE.MeshStandardMaterial({ color: 0xffd700 })
+  );
+  coin.position.set(-3 + Math.random() * 6, 1, z - 4);
+  coin.castShadow = true;
+  scene.add(coin);
+  collectibles.push(coin);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (gameState === "play") {
+    // --- Camera Speed Logic ---
+    cameraSpeedTarget = 0.2 + Math.min(1.2, distance / 400); // gentle ramp-up
+    cameraSpeed += (cameraSpeedTarget - cameraSpeed) * 0.01; // smooth speed change
+    let moveVec = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    camera.position.z += moveVec.z * cameraSpeed;
+    distance += cameraSpeed;
+    score = Math.floor(distance) + collectibles.filter(c => !c.visible).length * 10;
+    scoreDiv.textContent = `Score: ${score} | Distance: ${Math.floor(distance)}m`;
+    // --- Head Tracking: Clamp, round, smooth ---
+    let hx = Math.max(-1, Math.min(1, +(gestureState.head_x || 0).toFixed(3)));
+    let hy = Math.max(-1, Math.min(1, +(gestureState.head_y || 0).toFixed(3)));
+    targetCameraX = hx * 6;
+    targetCameraY = 2 + hy * 2;
+    // Higher smoothing factor for less lag
+    camera.position.x += (targetCameraX - camera.position.x) * 0.28;
+    camera.position.y += (targetCameraY - camera.position.y) * 0.28;
+    camera.lookAt(camera.position.x, camera.position.y, camera.position.z - 10);
+    // --- Procedural Generation: Always keep segments/obstacles ahead ---
+    const loader = new THREE.GLTFLoader();
+    let furthestZ = corridorSegments.length ? corridorSegments[corridorSegments.length - 1].position.z : 0;
+    while (camera.position.z < furthestZ - SEGMENT_AHEAD_DISTANCE + SEGMENT_LENGTH) {
+      addCorridorSegment(loader, furthestZ - SEGMENT_LENGTH);
+      addObstacle(loader, furthestZ - OBSTACLE_INTERVAL);
+      furthestZ -= SEGMENT_LENGTH;
+    }
+    // --- Cleanup: Remove objects far behind ---
+    while (corridorSegments.length && corridorSegments[0].position.z > camera.position.z + 30) {
+      scene.remove(corridorSegments[0]);
+      corridorSegments.shift();
+    }
+    obstacles = obstacles.filter(obj => {
+      if (obj.obj.position.z > camera.position.z + 30) {
+        scene.remove(obj.obj);
+        return false;
+      }
+      return true;
+    });
+    collectibles = collectibles.filter(coin => {
+      if (coin.position.z > camera.position.z + 30) {
+        scene.remove(coin);
+        return false;
+      }
+      return true;
+    });
+    // --- Collisions ---
+    checkObstacleCollisions();
+    checkCollectibles();
+  }
+  if (gameState === "over") {
+    statusDiv.textContent = "Game Over! Press Space to Restart.";
+  }
+  renderer.render(scene, camera);
+}
+
+function checkObstacleCollisions() {
+  for (let i = 0; i < obstacles.length; i++) {
+    let obs = obstacles[i];
+    let pos = obs.obj.position;
+    let dx = camera.position.x - pos.x;
+    let dy = camera.position.y - (pos.y || PLAYER_HEIGHT);
+    let dz = camera.position.z - pos.z;
+    let dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (Math.abs(dz) < 1.5 && Math.abs(dx) < 1.2 && Math.abs(dy) < 1.2) {
+      // Collision!
+      sounds.hit.play();
+      gameState = "over";
+      break;
+    }
+  }
+}
+
+function checkCollectibles() {
+  collectibles.forEach((coin, idx) => {
+    if (coin && coin.visible && Math.abs(camera.position.z - coin.position.z) < 1.2 && Math.abs(camera.position.x - coin.position.x) < 1.2 && Math.abs(camera.position.y - coin.position.y) < 1.2) {
+      coin.visible = false;
+      sounds.collect.play();
+      score += 10;
+    }
+  });
+}
+
+function startWebcamCapture() {
+  const video = document.getElementById("webcam");
+  navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+    video.srcObject = stream;
+    video.onloadedmetadata = () => {
+      setInterval(() => captureFrame(video), 300);
     };
+  });
 }
-
-async function fetchTutorial() {
-    try {
-        const res = await fetch(`${API_URL}/tutorial`);
-        const data = await res.json();
-        showTutorial(data.controls, data.tips);
-    } catch (err) {
-        console.error("Failed to fetch tutorial:", err);
-        showTutorial([
-            { gesture: "Head Left/Right", action: "Move left/right" },
-            { gesture: "Mouth Open", action: "Jump over lasers" },
-            { gesture: "Eyebrow Raise", action: "Freeze to avoid cameras" },
-            { gesture: "Blink", action: "Use EMP gadget (disable guard)" }
-        ], ["Stay alert!", "Timing is everything."]);
-    }
+function captureFrame(video) {
+  const canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext("2d").drawImage(video, 0, 0);
+  canvas.toBlob(blob => sendToBackend(blob), "image/jpeg");
 }
-
-async function fetchLevel(num) {
-    const res = await fetch(`${API_URL}/level/${num}`);
-    const data = await res.json();
-    levelData = data.level;
-    obstacles = data.obstacles;
-    obstacleIndex = 0;
-    levelDiv.textContent = `Level ${levelNum + 1}: ${levelData.name}`;
-    scoreDiv.textContent = `Score: ${score}`;
+function sendToBackend(blob) {
+  const formData = new FormData();
+  formData.append("file", blob, "frame.jpg");
+  fetch(`${API_URL}/detect-gesture/`, {
+    method: "POST",
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    gestureState = data.gestures;
+  });
 }
-
-function setupThree() {
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x181818);
-
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 8, 24);
-    camera.lookAt(new THREE.Vector3(0, 3, 12));
-
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-
-    controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.enablePan = false;
-    controls.enableZoom = false;
-    controls.target.set(0, 3, 12);
-    controls.update();
-
-    ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-    scene.add(ambientLight);
-
-    spotLight = new THREE.SpotLight(0xffffff, 1);
-    spotLight.position.set(0, 20, 10);
-    spotLight.castShadow = true;
-    scene.add(spotLight);
-
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-}
-
-function createRoom() {
-    const floor = new THREE.Mesh(
-        new THREE.BoxGeometry(20, 0.5, 30),
-        new THREE.MeshStandardMaterial({ color: 0x333333 })
-    );
-    floor.receiveShadow = true;
-    scene.add(floor);
-
-    const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x222233 });
-    const walls = [
-        [0, 4, -15], [0, 4, 15], [-10, 4, 0], [10, 4, 0]
-    ];
-
-    walls.forEach(pos => {
-        const geo = pos[0] === 0
-            ? new THREE.BoxGeometry(20, 8, 0.5)
-            : new THREE.BoxGeometry(0.5, 8, 30);
-        const wall = new THREE.Mesh(geo, wallMaterial);
-        wall.position.set(...pos);
-        scene.add(wall);
-    });
-}
-
-function createPlayer() {
-    const group = new THREE.Group();
-
-    const body = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.7, 0.9, 2.5, 16),
-        new THREE.MeshStandardMaterial({ color: 0xFFD700 })
-    );
-    body.position.y = 2.2;
-    body.castShadow = true;
-    group.add(body);
-
-    const head = new THREE.Mesh(
-        new THREE.SphereGeometry(0.8, 16, 16),
-        new THREE.MeshStandardMaterial({ color: 0xFFF2CC })
-    );
-    head.position.y = 3.7;
-    head.castShadow = true;
-    group.add(head);
-
-    group.position.set(0, 0, 12);
-    scene.add(group);
-    player.mesh = group;
-}
-
-function renderObstacles() {
-    obstacleMeshes.forEach(m => scene.remove(m));
-    obstacleMeshes = [];
-
-    for (let i = obstacleIndex; i < obstacleIndex + 3 && i < obstacles.length; i++) {
-        const z = 12 + (i - obstacleIndex) * 6;
-        const type = obstacles[i];
-        let mesh;
-
-        if (type === 'laser') {
-            mesh = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.1, 0.1, 18),
-                new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x880000 })
-            );
-            mesh.position.set(0, 1.2, z);
-        } else if (type === 'camera') {
-            mesh = new THREE.Mesh(
-                new THREE.BoxGeometry(1.2, 0.7, 1.2),
-                new THREE.MeshStandardMaterial({ color: 0x00BFFF })
-            );
-            mesh.position.set(6, 5.5, z);
-        } else if (type === 'guard') {
-            mesh = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.7, 0.7, 2.5, 16),
-                new THREE.MeshStandardMaterial({ color: 0x333333 })
-            );
-            mesh.position.set(-6, 1.5, z);
-        } else if (type === 'trapdoor') {
-            mesh = new THREE.Mesh(
-                new THREE.BoxGeometry(3, 0.2, 2),
-                new THREE.MeshStandardMaterial({ color: 0x654321 })
-            );
-            mesh.position.set(0, 0.3, z);
-        }
-
-        if (mesh) {
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
-            scene.add(mesh);
-            obstacleMeshes.push(mesh);
-        }
-    }
-}
-
-function animatePlayer(action) {
-    if (!player.mesh || animating) return;
-    animating = true;
-
-    const start = player.mesh.position.clone();
-    const target = start.clone();
-
-    if (action === 'jump') target.y += 2.5;
-    if (action === 'move') {
-    target.z += 1;
-}
-    if (action === 'move_left') target.x -= 2.5;
-    if (action === 'move_right') target.x += 2.5;
-    if (action === 'gadget') {
-        renderer.setClearColor(0x00ffff);
-        setTimeout(() => renderer.setClearColor(0x181818), 300);
-    }
-
-    let step = 0;
-
-    function stepAnim() {
-        step++;
-        const t = step / 20;
-        player.mesh.position.lerpVectors(start, target, t);
-
-        if (step < 20) {
-            requestAnimationFrame(stepAnim);
-        } else {
-            if (action === 'jump') player.mesh.position.y = 0;
-            animating = false;
-        }
-    }
-
-    stepAnim();
-}
-
-function getPlayerAction(g) {
-    // Map gestures to actions exactly per README
-    if (g.blink && player.gadgetCooldown === 0) return 'gadget';
-    if (g.eyebrow_raise) return 'freeze';
-    if (g.mouth_open) return 'jump';
-    if (g.head_direction === 'left') return 'move_left';
-    if (g.head_direction === 'right') return 'move_right';
-    return 'move';
-}
-
-function updateGame() {
-    if (!gameActive) return;
-
-    const action = getPlayerAction(gestureState);
-    if (['move_left', 'move_right'].includes(action)) {
-        player.x += (action === 'move_left' ? -2.5 : 2.5);
-        player.x = Math.max(-7, Math.min(7, player.x));
-    }
-    if (player.mesh) {
-    player.mesh.position.x = player.x;
-}
-
-
-    if (player.gadgetCooldown > 0) player.gadgetCooldown--;
-
-    const obsType = obstacles[obstacleIndex];
-    let collision = true;
-
-    if (obsType === 'laser' && action === 'jump') {
-        animatePlayer('jump');
-        collision = false;
-    } else if (obsType === 'camera' && action === 'freeze') {
-        collision = false;
-    } else if (obsType === 'guard' && action === 'gadget' && player.gadgetCooldown === 0) {
-        player.gadgetCooldown = 40;
-        animatePlayer('gadget');
-        collision = false;
-    } else if (obsType === 'trapdoor' && ['move_left', 'move_right'].includes(action)) {
-        animatePlayer(action);
-        collision = false;
-    } else if (action === 'move') {
-        animatePlayer('move');
-        collision = false;
-    }
-
-    if (!collision) {
-        obstacleIndex++;
-        score += 10;
-        renderObstacles();
-        statusDiv.textContent = '✅ Passed';
-    } else {
-        gameActive = false;
-        flashScreen();
-        statusDiv.textContent = `💥 Game Over! Final Score: ${score}`;
-    }
-
-    scoreDiv.textContent = `Score: ${score}`;
-
-    if (obstacleIndex >= obstacles.length) {
-        gameActive = false;
-        statusDiv.textContent = '🎉 Level Complete!';
-        setTimeout(() => {
-            levelNum++;
-            startGame();
-        }, 1500);
-    }
-}
-
-function flashScreen() {
-    const flash = document.createElement('div');
-    flash.style.position = 'fixed';
-    flash.style.top = '0';
-    flash.style.left = '0';
-    flash.style.width = '100vw';
-    flash.style.height = '100vh';
-    flash.style.background = 'rgba(255,0,0,0.4)';
-    flash.style.zIndex = '5000';
-    document.body.appendChild(flash);
-    setTimeout(() => document.body.removeChild(flash), 300);
-}
-
-async function sendFrameToBackend(blob) {
-    const formData = new FormData();
-    formData.append('file', blob, 'frame.jpg');
-
-    try {
-        const res = await fetch(`${API_URL}/detect-gesture/`, { method: 'POST', body: formData });
-
-        if (!res.ok) {
-            console.warn('⚠️ Backend error status:', res.status);
-            gestureState = getDefaultGestures();
-            return;
-        }
-
-        const data = await res.json();
-        if (data && data.gestures) {
-            gestureState = data.gestures;
-        } else {
-            gestureState = getDefaultGestures();
-        }
-
-        console.log('[GestureState]', gestureState);
-
-    } catch (err) {
-        console.error('⚠️ Error sending frame to backend:', err);
-        gestureState = getDefaultGestures();
-    }
-}
-
-function startWebcam() {
-    const webcam = document.getElementById('webcam');
-
-    navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
-        webcam.srcObject = stream;
-        webcam.onloadedmetadata = () => {
-            setInterval(() => {
-                if (!gameActive) return;
-
-                const offscreen = document.createElement('canvas');
-                offscreen.width = webcam.videoWidth;
-                offscreen.height = webcam.videoHeight;
-                offscreen.getContext('2d').drawImage(webcam, 0, 0);
-                offscreen.toBlob(sendFrameToBackend, 'image/jpeg');
-            }, 200);
-        };
-    }).catch(() => {
-        statusDiv.textContent = '❌ Webcam access denied.';
-    });
-}
-
-async function startGame() {
-    showLoading(true);
-    await fetchLevel(levelNum);
-    if (!scene) {
-        setupThree();
-        createRoom();
-        createPlayer();
-    } else {
-        player.mesh.position.set(0, 0, 12);
-        player.x = 0;
-        clearObstacles();
-    }
-    renderObstacles();
-    score = 0;
-    gameActive = true;
-    statusDiv.textContent = '🎮 Heist started!';
-    showLoading(false);
-    document.getElementById('loading').style.display = 'none';
-    gameLoop();
-    // if (!backgroundMusic) playMusic();
-}
-
-window.onload = () => {
-    showLoading(true);
-    fetchTutorial().catch(() => {
-        console.warn('Tutorial fetch failed, starting game anyway.');
-        startGame();
-    });
-    startWebcam();
-};
-
-
-// ✅ NEW UTILS
-function clearObstacles() {
-    obstacleMeshes.forEach(mesh => scene.remove(mesh));
-    obstacleMeshes = [];
-}
-
-function gameLoop() {
-    requestAnimationFrame(gameLoop);
-    updateGame();
-    controls.update();
-    renderer.render(scene, camera);
-}
-
-
-function getDefaultGestures() {
-    return {
-        mouth_open: false,
-        eyebrow_raise: false,
-        blink: false,
-        head_direction: 'center'
-    };
-}
-
-// Optional for testing without backend
-// function getRandomGestures() {
-//     return {
-//         mouth_open: Math.random() < 0.3,
-//         eyebrow_raise: Math.random() < 0.3,
-//         blink: Math.random() < 0.2,
-//         head_direction: ['center', 'left', 'right'][Math.floor(Math.random() * 3)]
-//     };
-// }
+// === END GAME ===
