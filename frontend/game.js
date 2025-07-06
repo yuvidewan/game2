@@ -212,9 +212,10 @@ function addObstacle(z) {
 function animate() {
   requestAnimationFrame(animate);
   if (gameState === "play") {
-    // --- Update speed over time ---
-    cameraSpeedTarget = 0.2 + Math.min(1.5, distance / 200); // Increase speed gradually
-    cameraSpeed += (cameraSpeedTarget - cameraSpeed) * 0.02;
+    // --- Update speed over time (much more gradual) ---
+    // Base speed + a small fraction of distance, capped at a reasonable max increase
+    cameraSpeedTarget = 0.2 + Math.min(0.8, distance / 500); // Max added speed 0.8, over 500m
+    cameraSpeed += (cameraSpeedTarget - cameraSpeed) * 0.01; // Slower interpolation to target speed
 
     // --- Move camera forward ---
     camera.position.z -= cameraSpeed;
@@ -229,17 +230,34 @@ function animate() {
     let hx = typeof gestureState.head_x === 'number' ? gestureState.head_x : 0;
     let hy = typeof gestureState.head_y === 'number' ? gestureState.head_y : 0;
 
-    // Clamp values to prevent extreme camera movements
+    // Clamp values from backend to prevent extreme camera movements
     hx = Math.max(-1, Math.min(1, hx));
     hy = Math.max(-1, Math.min(1, hy));
 
     // Scale head movements to camera position within corridor
-    targetCameraX = hx * 2; // Adjust sensitivity for X-axis movement
-    targetCameraY = PLAYER_HEIGHT + hy * 1.5; // Adjust sensitivity for Y-axis movement
+    // Mirrored X-axis movement: if head_x is positive (right), targetCameraX becomes negative (left)
+    targetCameraX = -hx * 2.5; // Increased sensitivity for X-axis movement, now mirrored
+    targetCameraY = PLAYER_HEIGHT + hy * 2; // Increased sensitivity for Y-axis movement
 
-    // Smooth camera movement
-    camera.position.x += (targetCameraX - camera.position.x) * 0.15; // Increased smoothing factor
-    camera.position.y += (targetCameraY - camera.position.y) * 0.15; // Increased smoothing factor
+    // Smooth camera movement towards the target position
+    camera.position.x += (targetCameraX - camera.position.x) * 0.15;
+    camera.position.y += (targetCameraY - camera.position.y) * 0.15;
+
+    // --- Clamp camera position to corridor bounds ---
+    // Corridor width is 6 units (-3 to 3 from center). Player radius is 0.8.
+    // So, camera X should be roughly between -3 + PLAYER_RADIUS and 3 - PLAYER_RADIUS.
+    // Using a slightly tighter bound for visual comfort.
+    const minCameraX = -2.5;
+    const maxCameraX = 2.5;
+    camera.position.x = Math.max(minCameraX, Math.min(maxCameraX, camera.position.x));
+
+    // Corridor height is 4 units (0 to 4). Player height is 2.
+    // Camera Y should be roughly between 0 + PLAYER_HEIGHT/2 and 4 - PLAYER_HEIGHT/2.
+    // Using a slightly tighter bound for visual comfort.
+    const minCameraY = 0.5; // Minimum height (e.g., player's head won't go below chest level)
+    const maxCameraY = 3.5; // Maximum height (e.g., player's head won't hit the ceiling)
+    camera.position.y = Math.max(minCameraY, Math.min(maxCameraY, camera.position.y));
+
 
     // Make the camera look slightly ahead
     camera.lookAt(camera.position.x, camera.position.y, camera.position.z - 10);
