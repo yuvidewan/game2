@@ -54,14 +54,28 @@ function init() {
   renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
-  renderer.setClearColor(0xf4f6fa); // Light background
+  // Set a dark background for better contrast with glowing elements
+  renderer.setClearColor(0x1a1a2e); // Dark blue/purple background
 
   // Lighting
-  scene.add(new THREE.AmbientLight(0xffffff, 0.7)); // Soft ambient light
-  const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.4)); // Softer ambient light
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
   dirLight.position.set(10, 20, 10);
   dirLight.castShadow = true;
+  dirLight.shadow.mapSize.width = 1024; // Increase shadow quality
+  dirLight.shadow.mapSize.height = 1024;
+  dirLight.shadow.camera.near = 0.5;
+  dirLight.shadow.camera.far = 50;
+  dirLight.shadow.camera.left = -20;
+  dirLight.shadow.camera.right = 20;
+  dirLight.shadow.camera.top = 20;
+  dirLight.shadow.camera.bottom = -20;
   scene.add(dirLight);
+
+  // Add a subtle point light for more dynamic lighting
+  const pointLight = new THREE.PointLight(0x00ffff, 0.5, 50); // Cyan light
+  pointLight.position.set(0, 5, -20);
+  scene.add(pointLight);
 
   // Load sounds
   sounds.hit = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_115b9bfae2.mp3");
@@ -126,41 +140,55 @@ function addCorridorSegment(z) {
   const corridorHeight = 4;
   const wallThickness = 0.2;
 
-  // Floor
+  // Floor (darker, slightly reflective)
   const floorGeometry = new THREE.BoxGeometry(corridorWidth, wallThickness, SEGMENT_LENGTH);
-  const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 });
+  const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x3a3a4e, roughness: 0.5, metalness: 0.1 });
   const floor = new THREE.Mesh(floorGeometry, floorMaterial);
   floor.position.set(0, -wallThickness / 2, z - SEGMENT_LENGTH / 2);
   floor.receiveShadow = true;
   scene.add(floor);
   corridorSegments.push(floor);
 
-  // Ceiling
+  // Ceiling (darker, slightly reflective)
   const ceilingGeometry = new THREE.BoxGeometry(corridorWidth, wallThickness, SEGMENT_LENGTH);
-  const ceilingMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 });
+  const ceilingMaterial = new THREE.MeshStandardMaterial({ color: 0x3a3a4e, roughness: 0.5, metalness: 0.1 });
   const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
   ceiling.position.set(0, corridorHeight + wallThickness / 2, z - SEGMENT_LENGTH / 2);
   ceiling.receiveShadow = true;
   scene.add(ceiling);
   corridorSegments.push(ceiling);
 
-  // Left Wall
+  // Left Wall (darker, with a subtle blue emissive glow)
   const leftWallGeometry = new THREE.BoxGeometry(wallThickness, corridorHeight + 2 * wallThickness, SEGMENT_LENGTH);
-  const leftWallMaterial = new THREE.MeshStandardMaterial({ color: 0x606060 });
+  const leftWallMaterial = new THREE.MeshStandardMaterial({ color: 0x2e2e4a, emissive: 0x000033, emissiveIntensity: 0.5 }); // Darker blue with glow
   const leftWall = new THREE.Mesh(leftWallGeometry, leftWallMaterial);
   leftWall.position.set(-corridorWidth / 2 - wallThickness / 2, corridorHeight / 2, z - SEGMENT_LENGTH / 2);
   leftWall.receiveShadow = true;
   scene.add(leftWall);
   corridorSegments.push(leftWall);
 
-  // Right Wall
+  // Right Wall (darker, with a subtle blue emissive glow)
   const rightWallGeometry = new THREE.BoxGeometry(wallThickness, corridorHeight + 2 * wallThickness, SEGMENT_LENGTH);
-  const rightWallMaterial = new THREE.MeshStandardMaterial({ color: 0x606060 });
+  const rightWallMaterial = new THREE.MeshStandardMaterial({ color: 0x2e2e4a, emissive: 0x000033, emissiveIntensity: 0.5 }); // Darker blue with glow
   const rightWall = new THREE.Mesh(rightWallGeometry, rightWallMaterial);
   rightWall.position.set(corridorWidth / 2 + wallThickness / 2, corridorHeight / 2, z - SEGMENT_LENGTH / 2);
   rightWall.receiveShadow = true;
   scene.add(rightWall);
   corridorSegments.push(rightWall);
+
+  // Add glowing lines on the floor for visual guidance
+  const lineMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.7 }); // Cyan glowing line
+  const lineGeometry = new THREE.BoxGeometry(0.1, 0.05, SEGMENT_LENGTH); // Thin line
+
+  const leftLine = new THREE.Mesh(lineGeometry, lineMaterial);
+  leftLine.position.set(-corridorWidth / 4, 0.05, z - SEGMENT_LENGTH / 2);
+  scene.add(leftLine);
+  corridorSegments.push(leftLine);
+
+  const rightLine = new THREE.Mesh(lineGeometry, lineMaterial);
+  rightLine.position.set(corridorWidth / 4, 0.05, z - SEGMENT_LENGTH / 2);
+  scene.add(rightLine);
+  corridorSegments.push(rightLine);
 }
 
 
@@ -179,12 +207,12 @@ function addObstacle(z) {
   if (obstacleType === "box") {
     obstacleMesh = new THREE.Mesh(
       new THREE.BoxGeometry(1.5, 1.5, 1.5),
-      new THREE.MeshStandardMaterial({ color: 0xff0000 }) // Red box
+      new THREE.MeshStandardMaterial({ color: 0xff4500, emissive: 0xff4500, emissiveIntensity: 0.7 }) // Orange-red glowing box
     );
   } else {
     obstacleMesh = new THREE.Mesh(
       new THREE.SphereGeometry(1, 16, 16),
-      new THREE.MeshStandardMaterial({ color: 0x0000ff }) // Blue sphere
+      new THREE.MeshStandardMaterial({ color: 0x8a2be2, emissive: 0x8a2be2, emissiveIntensity: 0.7 }) // Blue-violet glowing sphere
     );
   }
 
@@ -197,7 +225,7 @@ function addObstacle(z) {
   if (distance > 30 && Math.random() < 0.4) {
     const coin = new THREE.Mesh(
       new THREE.SphereGeometry(0.3, 12, 12), // lighter geometry
-      new THREE.MeshStandardMaterial({ color: 0xffd700 })
+      new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffd700, emissiveIntensity: 0.8 }) // Gold glowing coin
     );
     // Put coin in a different lane from obstacle
     const otherLanes = lanePositions.filter(x => x !== laneX);
@@ -214,8 +242,10 @@ function animate() {
   if (gameState === "play") {
     // --- Update speed over time (much more gradual) ---
     // Base speed + a small fraction of distance, capped at a reasonable max increase
-    cameraSpeedTarget = 0.2 + Math.min(0.8, distance / 500); // Max added speed 0.8, over 500m
-    cameraSpeed += (cameraSpeedTarget - cameraSpeed) * 0.01; // Slower interpolation to target speed
+    // Increased distance divisor to 1000 and reduced max added speed to 0.7
+    cameraSpeedTarget = 0.2 + Math.min(0.7, distance / 1000);
+    // Reduced interpolation factor for even slower, smoother acceleration
+    cameraSpeed += (cameraSpeedTarget - cameraSpeed) * 0.005;
 
     // --- Move camera forward ---
     camera.position.z -= cameraSpeed;
