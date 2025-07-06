@@ -82,9 +82,9 @@ function init() {
   sounds.collect = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_115b9bfae2.mp3");
 
   // Fetch tutorial data from backend
-  fetch(`${API_URL}/tutorial`).then(res => res.json()).then(data => {
-    tutorialDiv.innerHTML = `<b>Controls:</b><ul>${data.controls.map(c => `<li>${c.gesture}: ${c.action}</li>`).join("")}</ul><b>Tips:</b> ${data.tips.join(", ")}`;
-  });
+  // fetch(`${API_URL}/tutorial`).then(res => res.json()).then(data => {
+  //   tutorialDiv.innerHTML = `<b>Controls:</b><ul>${data.controls.map(c => `<li>${c.gesture}: ${c.action}</li>`).join("")}</ul><b>Tips:</b> ${data.tips.join(", ")}`;
+  // });
 
   // Reset and start the game
   resetGame();
@@ -115,7 +115,7 @@ function resetGame() {
   gameState = "start";
   levelDiv.textContent = "POV RUNNER";
   scoreDiv.textContent = `Score: 0 | Distance: 0m`;
-  statusDiv.textContent = "Press Space or Blink to Start!";
+  statusDiv.textContent = "Press Space to Start!";
 
   // Add initial corridor segments and obstacles
   for (let i = 0; i < MAX_AHEAD_SEGMENTS; i++) {
