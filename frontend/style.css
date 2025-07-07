@@ -1,51 +1,100 @@
 body {
   margin: 0;
   overflow: hidden;
-  background: #f4f6fa;
-  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #1a1a2e; /* Darker background to match the game's clear color */
+  font-family: 'Space Mono', monospace, Arial, sans-serif; /* Recommended Google Font for futuristic feel */
 }
 #game-canvas {
   display: block;
   width: 100vw;
   height: 100vh;
-  background: #e9ecf3;
+  /* Background here is set by Three.js renderer.setClearColor, so this might not be visible */
+  background: #1a1a2e; 
 }
 #hud {
   position: absolute;
-  top: 10px;
-  left: 10px;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   color: #222;
   z-index: 2;
+  background: rgba(255,255,255,0.85); /* Very light background */
+  padding: 0.5em 1.5em;
+  border-radius: 12px;
+  font-size: 2em;
+  font-family: 'Space Mono', monospace, Arial, sans-serif;
+  font-weight: bold;
+  text-shadow: none;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2em;
+}
+#score {
+  color: #222;
+  font-size: 1.1em;
+  text-shadow: none;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  animation: neon-glow 2s infinite alternate;
+}
+#status {
+  position: absolute;
+  top: 20px;
+  left: 30px;
   background: rgba(255,255,255,0.7);
-  padding: 10px 20px;
-  border-radius: 10px;
-  font-size: 1.2em;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  padding: 0.3em 1em;
+  border-radius: 8px;
+  color: #222;
+  font-size: 1.1em;
+  text-shadow: none;
+  font-weight: bold;
+  animation: neon-glow 2s infinite alternate-reverse;
+}
+#level {
+  position: absolute;
+  top: 20px;
+  right: 30px;
+  background: rgba(255,255,255,0.7);
+  padding: 0.3em 1em;
+  border-radius: 8px;
+  color: #222;
+  font-size: 1.1em;
+  text-shadow: none;
+  font-weight: bold;
+  animation: neon-glow 2s infinite alternate;
 }
 #tutorial {
   position: absolute;
   bottom: 10px;
   left: 10px;
-  color: #222;
+  color: #333;
   z-index: 2;
-  background: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.8);
   padding: 10px 20px;
   border-radius: 10px;
   font-size: 1em;
   max-width: 400px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  box-shadow: none;
 }
 #overlay {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(255,255,255,0.8);
+  background: rgba(255,255,200,0.3); /* Pale yellow overlay */
   color: #222;
   font-size: 2em;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   z-index: 10;
+  text-shadow: none;
+  transition: opacity 0.5s ease-in-out;
+}
+@keyframes neon-glow {
+  0% { text-shadow: 0 0 18px #00ffff, 0 0 32px #fff; }
+  100% { text-shadow: 0 0 32px #00ffff, 0 0 64px #fff; }
 }

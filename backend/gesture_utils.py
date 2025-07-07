@@ -32,20 +32,14 @@ def detect_head_direction(landmarks):
     return "center"
 
 def detect_head_pose(landmarks):
-    # Use nose tip (1), left cheek (234), right cheek (454), chin (152), forehead (10)
+    # Use nose tip (1) for translation
     nose = safe_landmark(landmarks, 1)
-    left = safe_landmark(landmarks, 234)
-    right = safe_landmark(landmarks, 454)
-    chin = safe_landmark(landmarks, 152)
-    forehead = safe_landmark(landmarks, 10)
-    if not (nose and left and right and chin and forehead):
+    if not nose:
         return 0.0, 0.0
-    # Yaw: left/right, compare nose.x to midpoint of cheeks
-    mid_x = (left.x + right.x) / 2
-    head_x = (nose.x - mid_x) * 8  # scale to approx [-1, 1]
+    # X translation: left/right in frame
+    head_x = (nose.x - 0.5) * 2  # -1 (left edge), 0 (center), 1 (right edge)
     head_x = max(-1, min(1, head_x))
-    # Pitch: up/down, compare nose.y to midpoint of chin/forehead
-    mid_y = (chin.y + forehead.y) / 2
-    head_y = (nose.y - mid_y) * -8  # negative so up is positive
+    # Y translation: up/down in frame
+    head_y = (0.5 - nose.y) * 2  # 1 (top), 0 (center), -1 (bottom)
     head_y = max(-1, min(1, head_y))
     return head_x, head_y
