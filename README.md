@@ -1,33 +1,13 @@
-# Face Heist: The Museum Escape
+# Jungle Adventure Runner
 
-Welcome to **Face Heist: The Museum Escape**! This is a next-generation, highly interactive, and realistic browser game where you control a 3D character escaping a high-security museum using only your face gestures, detected via your webcam.
-
-## Game Concept
-
-You are a master thief escaping a high-security museum at night. Dodge laser grids, security cameras, guards, and trapdoors using your head movements, facial expressions, and blinks. Each level is a new room with unique challenges, realistic visuals, and immersive sound.
+A first-person endless runner game set in a vibrant jungle! Move through a lush, sunlit forest, dodging boulders and logs, and collecting magical jungle berries that slow you down for 5 seconds. Control your character by moving your head left/right/up/down (translation, not rotation) in front of your webcam—no keyboard needed!
 
 ## Features
-- **Real-time face gesture detection** (head movement, mouth open, eyebrow raise, blink)
-- **3D animated character and obstacles** for a human-like, cinematic experience
-- **Level-based gameplay** with unique rooms and increasing difficulty
-- **Sound effects and music** for immersion
-- **FastAPI backend** for gesture processing, level logic, and high scores
-- **Tutorial overlay and control list**
-
-## Controls
-| Gesture           | Action                        |
-|-------------------|-------------------------------|
-| Head Left/Right   | Move left/right               |
-| Mouth Open        | Jump over lasers              |
-| Eyebrow Raise     | Freeze to avoid cameras       |
-| Blink             | Use EMP gadget (disable guard)|
-
-## How to Play
-1. Start the backend server (see below).
-2. Open the frontend in your browser.
-3. Allow webcam access when prompted.
-4. Read the tutorial overlay for controls and tips.
-5. Use your face to escape the museum!
+- Bright, continuous jungle environment with a blue sky, grassy ground, and dirt path
+- Obstacles: Mossy boulders and fallen logs (with leafy accents)
+- Powerups: Collect magical berries to temporarily slow down the runner
+- Head movement controls: Move your head left/right/up/down (while facing the camera) to steer the player
+- Responsive UI and smooth performance
 
 ## Setup Instructions
 
@@ -65,3 +45,11 @@ Open `localhost:8080` in your browser.
 
 ## License
 YUVI & ADITYA
+
+## How to Play
+1. Start the backend server (see setup).
+2. Open the frontend in your browser.
+3. Allow webcam access when prompted.
+4. Move your head left/right/up/down to dodge obstacles and collect berries!
+
+Enjoy your jungle adventure!
