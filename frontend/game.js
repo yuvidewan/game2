@@ -247,13 +247,14 @@ function addObstacle(z) {
 
 function animate() {
     requestAnimationFrame(animate);
+    const delta = clock.getDelta();
 
     if (gameState === "play") {
         cameraSpeedTarget = 0.2 + Math.min(0.7, distance / 1000);
         cameraSpeed += (cameraSpeedTarget - cameraSpeed) * 0.005;
 
-        camera.position.z -= cameraSpeed;
-        distance += cameraSpeed;
+        camera.position.z -= cameraSpeed * delta  * 60;
+        distance += cameraSpeed * delta * 60;
         score = Math.floor(distance) + collectibles.filter(c => !c.mesh.visible).length * 10;
         scoreDiv.textContent = `Distance: ${Math.floor(distance)}m`;
         document.getElementById("high-score").textContent = `High Score: ${highScore}m`;
