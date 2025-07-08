@@ -9,6 +9,8 @@ let corridorSegments = [], obstacles = [], collectibles = [];
 let gestureState = {};
 let gameState = "start", score = 0, distance = 0, speed = 0.5;
 let sounds = {};
+let invincible = false;
+let invincibleTimeout = null;
 const SEGMENT_LENGTH = 40;
 const OBSTACLE_INTERVAL = 18;
 const PLAYER_HEIGHT = 2;
@@ -127,6 +129,7 @@ function startGame() {
 function restartGame() {
     sounds.bg.pause();
     sounds.bg.currentTime = 0;
+    sounds.bg.volume = 0.6;
     hideGameOver(); 
     resetGame();
     startGame();
@@ -151,7 +154,6 @@ function addCorridorSegment(z) {
         corridorSegments.push(tuft);
     }
 }
-
 function addObstacle(z) {
     if (distance < 50 && Math.random() < 0.6) return;
 
@@ -199,22 +201,32 @@ function addObstacle(z) {
     obstacles.push({ obj: obstacleMesh, type: isBoulder ? "boulder" : "log" });
 
     if (distance > 30 && Math.random() < 0.4) {
-        const berry = new THREE.Mesh(
-            new THREE.SphereGeometry(0.33, 14, 14),
-            new THREE.MeshStandardMaterial({
-                color: 0xc0392b,
-                emissive: 0xc0392b,
-                emissiveIntensity: 1.2,
-                roughness: 0.15,
-                metalness: 0.4,
-            })
-        );
-        const leaf = new THREE.Mesh(
-            new THREE.SphereGeometry(0.13, 8, 8),
-            new THREE.MeshStandardMaterial({ color: 0x355e2c, roughness: 0.6 })
-        );
-        leaf.position.set(0.16, 0.16, 0);
+        const berryGeometry = new THREE.SphereGeometry(0.33, 24, 24);
+        const berryMaterial = new THREE.MeshStandardMaterial({
+            color: 0x8b1a1a,           // Deep jungle berry red
+            roughness: 0.4,
+            metalness: 0.2,
+            emissive: 0x3b0a0a,
+            emissiveIntensity: 0.5,
+            bumpScale: 0.05
+        });
+        berryMaterial.emissiveIntensity = 0.8;
+        berryMaterial.emissive = new THREE.Color(0x3b0a0a);
+
+        const berry = new THREE.Mesh(berryGeometry, berryMaterial);
+        berry.scale.set(1, 1.3, 1); // Make it slightly oval
+
+        // Leaf crown
+        const leafGeometry = new THREE.ConeGeometry(0.2, 0.25, 8);
+        const leafMaterial = new THREE.MeshStandardMaterial({
+            color: 0x355e2c,
+            roughness: 0.7,
+        });
+        const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
+        leaf.rotation.x = Math.PI;
+        leaf.position.y = 0.45;
         berry.add(leaf);
+
         const berryX = [-2, 0, 2].filter(x => x !== laneX)[Math.floor(Math.random() * 2)];
         berry.position.set(berryX, 1.05, z - 4);
         scene.add(berry);
@@ -252,15 +264,20 @@ function animate() {
             if (!camera.outTimerStart) {
                 camera.outTimerStart = performance.now();
             } else if (performance.now() - camera.outTimerStart > 2500) {
-                // gameState = "over";
-                // sounds.hit.play();
-                // if (sounds.bg) sounds.bg.volume = 0.1;
-                endGame();
+                if (!invincible) {
+                    // gameState = "over";
+                    // sounds.hit.play();
+                    // if (sounds.bg) sounds.bg.volume = 0.1;
+                    endGame();
+                }
             }
+            statusDiv.textContent = "⚠ Keep your head centered!";
+            statusDiv.style.opacity = "1";
         } else {
-            camera.outTimerStart = null; // Reset if back in bounds
+            camera.outTimerStart = null;
+            statusDiv.textContent = ""; // Clear the warning 
+            statusDiv.style.opacity = "0";
         }
-
         camera.lookAt(camera.position.x, camera.position.y, camera.position.z - 10);
 
         let furthestZ = corridorSegments.length ? corridorSegments[corridorSegments.length - 1].position.z : 0;
@@ -302,16 +319,17 @@ function checkObstacleCollisions() {
         const dz = camera.position.z - obj.position.z;
 
         if (Math.abs(dx) < PLAYER_RADIUS + 0.7 && Math.abs(dy) < PLAYER_RADIUS + 0.7 && Math.abs(dz) < PLAYER_RADIUS + 0.7) {
-            // sounds.hit.play();
-            // gameState = "over";
-            // if (sounds.bg) sounds.bg.volume = 0.1;
-            endGame();
-            break;
+            if (!invincible) {
+                // sounds.hit.play();
+                // gameState = "over";
+                // if (sounds.bg) sounds.bg.volume = 0.1;
+                endGame();
+                break;
+            }else {
+                continue; // Ignore collision if invincible
         }
-    }
-}
+    }}}
 
-let slowEffectTimeout = null;
 function checkCollectibles() {
     for (const c of collectibles) {
         if (!c.mesh.visible) continue;
@@ -324,28 +342,31 @@ function checkCollectibles() {
         if (dist < PLAYER_RADIUS + 0.5) {
             c.mesh.visible = false;
             sounds.collect.play();
-            if (c.type === "slow") activateSlowEffect();
+            if (c.type === "slow") activateInvincibleEffect();
         }
     }
 }
 
-function activateSlowEffect() {
-    clearTimeout(slowEffectTimeout);
-    speed = 0.2;
-    showSlowOverlay();
-    slowEffectTimeout = setTimeout(() => {
-        speed = 0.5;
-        hideSlowOverlay();
+function activateInvincibleEffect() {
+    if (invincibleTimeout) clearTimeout(invincibleTimeout);
+    invincible = true;
+    showInvincibleOverlay();
+    invincibleTimeout = setTimeout(() => {
+        invincible = false;
+        hideInvincibleOverlay();
     }, 5000);
 }
 
-function showSlowOverlay() {
+
+function showInvincibleOverlay() {
     const overlay = document.getElementById("overlay");
     overlay.style.display = "flex";
-    overlay.style.background = "rgba(50,150,50,0.25)";
-    overlay.textContent = ""; // Jungle Berry Power! Slowed Down!
+    overlay.style.background = "rgba(255, 215, 0, 0.3)";
+    overlay.style.color = "#000";
+    overlay.textContent = "";   //Jungle Berry Power! You Are Invincible!
 }
-function hideSlowOverlay() {
+
+function hideInvincibleOverlay() {
     const overlay = document.getElementById("overlay");
     overlay.style.display = "none";
     overlay.textContent = "";

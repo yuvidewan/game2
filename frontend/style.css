@@ -41,17 +41,21 @@ body {
 }
 #status {
   position: absolute;
-  top: 20px;
-  left: 30px;
-  background: rgba(255,255,255,0.7);
+  top: 80px; /* lower than the HUD, avoids overlap */
+  left: 50%;
+  transform: translateX(-50%);
+  transition: opacity 0.3s ease;
+  background: rgba(255, 255, 255, 0.7);
   padding: 0.3em 1em;
   border-radius: 8px;
   color: #222;
-  font-size: 1.1em;
-  text-shadow: none;
+  font-size: 0.9em; 
   font-weight: bold;
+  z-index: 30;
+  text-shadow: none;
   animation: neon-glow 2s infinite alternate-reverse;
 }
+
 #level {
   position: absolute;
   top: 20px;
