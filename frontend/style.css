@@ -104,6 +104,7 @@ body {
 }
 
 #game-info {
+  display:block;
   position: absolute;
   top: 50%;
   left: 50%;
@@ -148,4 +149,48 @@ body {
   z-index: 99;
   text-align: center;
   font-family: 'Orbitron', sans-serif;
+}
+
+#end-stats {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.9);
+  color: #222;
+  padding: 30px;
+  border-radius: 12px;
+  font-family: 'Space Mono', monospace, Arial, sans-serif;
+  text-align: center;
+  z-index: 100;
+  box-shadow: 0 0 20px rgba(0,0,0,0.4);
+}
+
+#end-stats h2 {
+  margin-top: 0;
+  font-size: 2em;
+}
+
+#end-stats ul {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+}
+
+#end-stats li {
+  margin: 10px 0;
+  font-size: 1.2em;
+}
+
+#end-stats button {
+  padding: 10px 20px;
+  font-size: 1em;
+  background: #3fa34d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+#end-stats button:hover {
+  background: #2b7a3b;
 }

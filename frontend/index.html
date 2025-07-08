@@ -13,6 +13,7 @@
 
   <div id="hud">
     <div id="score"></div>
+    <div id="high-score"></div>
     <div id="status"></div>
     <div id="level"></div>
   </div>
@@ -23,9 +24,20 @@
 
   <div id="tutorial"></div>
   <div id="overlay"></div>
+  <div id="end-stats" style="display: none;">
+  <h2>Run Summary</h2>
+  <ul>
+    <li>Distance: <span id="stat-distance">0</span> m</li>
+    <li>Obstacles Dodged: <span id="stat-obstacles">0</span></li>
+    <li>Berries Collected: <span id="stat-berries">0</span></li>
+    <li>Time Survived: <span id="stat-time">0</span> s</li>
+    <li>High Score: <span id="stat-high-score">0</span> m</li>
+  <ul>
+  <button id="restart-btn">Play Again</button>
+</div>
 
   <!-- New Game Info Box -->
-  <div id="game-info">
+  <div id="game-info" style="display: block;">
     <h2>Jungle Adventure Runner</h2>
     <p>A fast-paced endless runner set in a lush jungle. Dodge obstacles and collect magical berries — all controlled by your head movements!</p>
     <ul>

@@ -11,6 +11,10 @@ let gameState = "start", score = 0, distance = 0, speed = 0.5;
 let sounds = {};
 let invincible = false;
 let invincibleTimeout = null;
+let obstaclesDodged = 0;
+let berriesCollected = 0;
+let gameStartTime = 0;
+let highScore = localStorage.getItem("highScore") || 0;
 const SEGMENT_LENGTH = 40;
 const OBSTACLE_INTERVAL = 18;
 const PLAYER_HEIGHT = 2;
@@ -37,8 +41,8 @@ window.onload = () => {
 };
 
 function startGameListener(e) {
-    if ((gameState === "start" || gameState === "over") && e.code === "Space") {
-        gameState === "start" ? startGame() : restartGame();
+    if (gameState === "start" && e.code === "Space") {
+        startGame();
     }
 }
 
@@ -111,6 +115,11 @@ function resetGame() {
     camera.position.set(0, PLAYER_HEIGHT, 0);
     gameState = "start";
     scoreDiv.textContent = "Distance: 0m";
+    obstaclesDodged = 0;
+    berriesCollected = 0;
+    gameStartTime = performance.now();
+
+    document.getElementById("game-info").style.display = "block";
 
     for (let i = 0; i < MAX_AHEAD_SEGMENTS; i++) {
         const z = -i * SEGMENT_LENGTH;
@@ -118,6 +127,8 @@ function resetGame() {
         addObstacle(-OBSTACLE_INTERVAL - i * OBSTACLE_INTERVAL);
     }
 }
+
+
 
 function startGame() {
     gameState = "play";
@@ -245,6 +256,7 @@ function animate() {
         distance += cameraSpeed;
         score = Math.floor(distance) + collectibles.filter(c => !c.mesh.visible).length * 10;
         scoreDiv.textContent = `Distance: ${Math.floor(distance)}m`;
+        document.getElementById("high-score").textContent = `High Score: ${highScore}m`;
 
         const hx = Math.max(-1, Math.min(1, gestureState.head_x || 0));
         const hy = Math.max(-1, Math.min(1, gestureState.head_y || 0));
@@ -313,22 +325,26 @@ function animate() {
 }
 
 function checkObstacleCollisions() {
-    for (const { obj } of obstacles) {
+    for (const o of obstacles) {
+        const obj = o.obj;
         const dx = camera.position.x - obj.position.x;
         const dy = camera.position.y - obj.position.y;
         const dz = camera.position.z - obj.position.z;
 
-        if (Math.abs(dx) < PLAYER_RADIUS + 0.7 && Math.abs(dy) < PLAYER_RADIUS + 0.7 && Math.abs(dz) < PLAYER_RADIUS + 0.7) {
-            if (!invincible) {
-                // sounds.hit.play();
-                // gameState = "over";
-                // if (sounds.bg) sounds.bg.volume = 0.1;
-                endGame();
-                break;
-            }else {
-                continue; // Ignore collision if invincible
+    if (Math.abs(dx) < PLAYER_RADIUS + 0.7 &&
+        Math.abs(dy) < PLAYER_RADIUS + 0.7 &&
+        Math.abs(dz) < PLAYER_RADIUS + 0.7) {
+        if (!invincible) {
+            endGame();
+            break;
+        } else {
+            continue;
         }
-    }}}
+    } else if (obj.position.z > camera.position.z + 5 && !o.counted) {
+        o.counted = true;
+        obstaclesDodged++;
+    }
+}}
 
 function checkCollectibles() {
     for (const c of collectibles) {
@@ -342,6 +358,7 @@ function checkCollectibles() {
         if (dist < PLAYER_RADIUS + 0.5) {
             c.mesh.visible = false;
             sounds.collect.play();
+            berriesCollected++;
             if (c.type === "slow") activateInvincibleEffect();
         }
     }
@@ -411,8 +428,16 @@ function endGame() {
     gameState = "over";
     sounds.hit.play();
     if (sounds.bg) sounds.bg.volume = 0.1;
-    showGameOver();
+
+    if (distance > highScore) {
+        highScore = Math.floor(distance);
+        localStorage.setItem("highScore", highScore);
+        console.log("New High Score!", highScore);
+    }
+
+    showEndStats();
 }
+
 
 function showGameOver() {
     if (gameOverDiv) {
@@ -425,4 +450,44 @@ function hideGameOver() {
         gameOverDiv.style.display = "none";
     }
 }
+
+function showEndStats() {
+    const endStats = document.getElementById("end-stats");
+    const distanceEl = document.getElementById("stat-distance");
+    const obstaclesEl = document.getElementById("stat-obstacles");
+    const berriesEl = document.getElementById("stat-berries");
+    const timeEl = document.getElementById("stat-time");
+    const highScoreEl = document.getElementById("stat-high-score");
+
+    const totalTime = ((performance.now() - gameStartTime) / 1000).toFixed(1);
+
+    animateCounter(distanceEl, 0, Math.floor(distance), 500);
+    animateCounter(obstaclesEl, 0, obstaclesDodged, 500);
+    animateCounter(berriesEl, 0, berriesCollected, 500);
+    animateCounter(timeEl, 0, totalTime, 500);
+
+    highScoreEl.textContent = highScore;
+
+    endStats.style.display = "block";
+}
+
+
+function animateCounter(el, from, to, duration) {
+    const start = performance.now();
+    function step(timestamp) {
+        const progress = Math.min((timestamp - start) / duration, 1);
+        const value = from + (to - from) * progress;
+        el.textContent = Math.floor(value);
+        if (progress < 1) {
+            requestAnimationFrame(step);
+        }
+    }
+    requestAnimationFrame(step);
+}
+
+document.getElementById("restart-btn").addEventListener("click", () => {
+    document.getElementById("end-stats").style.display = "none";
+    restartGame();
+});
+
 
