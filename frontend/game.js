@@ -49,6 +49,7 @@ function startGameListener(e) {
 function init() {
     // Scene setup
     scene = new THREE.Scene();
+    scene.background = new THREE.TextureLoader().load("images/bg_img.png");
     clock = new THREE.Clock();
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, PLAYER_HEIGHT, 0); // Initial camera position
@@ -57,7 +58,11 @@ function init() {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = false;
-    renderer.setClearColor(0x87ceeb); // Sky blue background (daytime)
+    const loader = new THREE.TextureLoader();
+    loader.load("images/bg_img.png", function(texture) {
+        scene.background = texture;
+});
+
     renderer.outputEncoding = THREE.sRGBEncoding; // Correct color rendering
 
     // Lighting: natural, not washed out
@@ -99,6 +104,9 @@ function init() {
     jungleGround = new THREE.Mesh(groundGeometry, groundMaterial);
     jungleGround.position.set(0, -0.15, -500); // Centered under the player
     scene.add(jungleGround);
+    sounds.bg = new Audio("audio/bg_music.mp3");
+    sounds.bg.loop = true;
+    sounds.bg.volume = 0.6;
 }
 
 // Handle window resizing
@@ -134,11 +142,23 @@ function resetGame() {
 
 function startGame() {
     gameState = "play";
+
+    const infoBox = document.getElementById("game-info");
+    if (infoBox) {
+        infoBox.style.display = "none";
+    }
+
+    if (sounds.bg) sounds.bg.play();
 }
+
 
 function restartGame() {
     resetGame();
     startGame();
+    if (sounds.bg) {
+        sounds.bg.pause();
+        sounds.bg.currentTime = 0;
+    }
 }
 
 // Only add the dirt path and tufts in addCorridorSegment, not the ground
@@ -167,65 +187,94 @@ function addCorridorSegment(z) {
 // Smaller obstacles: boulders and logs
 function addObstacle(z) {
     if (distance < 50 && Math.random() < 0.6) return;
+
     const lanePositions = [-2, 0, 2];
     const laneX = lanePositions[Math.floor(Math.random() * lanePositions.length)];
     const obstacleType = Math.random() < 0.5 ? "boulder" : "log";
     let obstacleMesh;
+
     if (obstacleType === "boulder") {
         obstacleMesh = new THREE.Mesh(
-            new THREE.SphereGeometry(1.05, 16, 16),
+            new THREE.IcosahedronGeometry(1.2, 1),
             new THREE.MeshStandardMaterial({
-                color: 0x5a6e3a, // Mossy green boulder
-                roughness: 0.8,
-                metalness: 0.2,
+                color: 0x777777, // stone grey
+                roughness: 0.85,
+                metalness: 0.1,
             })
         );
-        // Add moss/leaf accent
+
+        // Add moss tuft
         const moss = new THREE.Mesh(
-            new THREE.SphereGeometry(0.25, 8, 8),
-            new THREE.MeshStandardMaterial({ color: 0x355e2c, roughness: 0.7 })
+            new THREE.SphereGeometry(0.3, 8, 8),
+            new THREE.MeshStandardMaterial({
+                color: 0x3fa34d,
+                roughness: 0.7,
+            })
         );
-        moss.position.set(0.4, 0.4, 0);
+        moss.position.set(0.5, 0.5, 0);
         obstacleMesh.add(moss);
+
     } else {
         obstacleMesh = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.42, 0.42, 1.8, 12),
+            new THREE.CylinderGeometry(0.42, 0.42, 3, 16),
             new THREE.MeshStandardMaterial({
-                color: 0x8b5a2b, // Rich brown log
+                color: 0x8b5a2b, // bark color
                 roughness: 0.7,
                 metalness: 0.2,
             })
         );
         obstacleMesh.rotation.z = Math.PI / 2;
-        // Add moss/leaf accent
+
+        // Tree ring caps on ends
+        const capMaterial = new THREE.MeshStandardMaterial({
+            color: 0xf4d9a4, // pale wood color
+            roughness: 0.5,
+        });
+
+        const capGeo = new THREE.CircleGeometry(0.42, 16);
+        const cap1 = new THREE.Mesh(capGeo, capMaterial);
+        const cap2 = new THREE.Mesh(capGeo, capMaterial);
+        cap1.rotation.y = Math.PI / 2;
+        cap1.position.x = 1.5;
+        cap2.rotation.y = -Math.PI / 2;
+        cap2.position.x = -1.5;
+        obstacleMesh.add(cap1);
+        obstacleMesh.add(cap2);
+
+        // Moss accent
         const moss = new THREE.Mesh(
             new THREE.SphereGeometry(0.18, 8, 8),
-            new THREE.MeshStandardMaterial({ color: 0x355e2c, roughness: 0.7 })
+            new THREE.MeshStandardMaterial({
+                color: 0x355e2c,
+                roughness: 0.7,
+            })
         );
         moss.position.set(0, 0.45, 0);
         obstacleMesh.add(moss);
     }
+
     obstacleMesh.position.set(laneX, 1.05, z);
     scene.add(obstacleMesh);
     obstacles.push({ obj: obstacleMesh, type: obstacleType });
 
-    // Add a jungle fruit powerup
+    // Jungle berry collectible
     if (distance > 30 && Math.random() < 0.4) {
-        // Glowing berry (vibrant red)
         const berry = new THREE.Mesh(
             new THREE.SphereGeometry(0.33, 14, 14),
             new THREE.MeshStandardMaterial({
-                color: 0xc0392b, // Vibrant red
+                color: 0xc0392b,
                 emissive: 0xc0392b,
                 emissiveIntensity: 1.2,
                 roughness: 0.15,
                 metalness: 0.4,
             })
         );
-        // Add a leaf (deep green)
         const leaf = new THREE.Mesh(
             new THREE.SphereGeometry(0.13, 8, 8),
-            new THREE.MeshStandardMaterial({ color: 0x355e2c, roughness: 0.6 })
+            new THREE.MeshStandardMaterial({
+                color: 0x355e2c,
+                roughness: 0.6,
+            })
         );
         leaf.position.set(0.16, 0.16, 0);
         berry.add(leaf);
@@ -236,6 +285,7 @@ function addObstacle(z) {
         collectibles.push({ mesh: berry, type: "slow" });
     }
 }
+
 
 // Main animation loop
 function animate() {
@@ -352,6 +402,7 @@ function checkObstacleCollisions() {
             // Collision!
             sounds.hit.play();
             gameState = "over";
+            if (sounds.bg) sounds.bg.volume = 0.1;
             break;
         }
     }

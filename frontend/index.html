@@ -3,20 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Face Heist</title>
+  <title>Face Heist - Jungle Adventure Runner</title>
   <link rel="stylesheet" href="style.css">
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <canvas id="game-canvas"></canvas>
   <video id="webcam" autoplay playsinline style="display:none;"></video>
+
   <div id="hud">
     <div id="score"></div>
     <div id="status"></div>
     <div id="level"></div>
   </div>
+
   <div id="tutorial"></div>
   <div id="overlay"></div>
+
+  <!-- New Game Info Box -->
+  <div id="game-info">
+    <h2>Jungle Adventure Runner</h2>
+    <p>A fast-paced endless runner set in a lush jungle. Dodge obstacles and collect magical berries — all controlled by your head movements!</p>
+    <ul>
+      <li><b>Controls:</b> Tilt head left/right → move left/right</li>
+      <li><b>Controls:</b> Tilt head up/down → move up/down</li>
+      <li><b>Powerup:</b> Collect berries to slow time!</li>
+    </ul>
+    <p>Press <b>Space</b> to Start!</p>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/three@0.125.2/build/three.min.js"></script>
   <script src="game.js"></script>
   <style>
