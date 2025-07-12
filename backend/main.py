@@ -5,28 +5,10 @@ import cv2
 import numpy as np
 import mediapipe as mp
 from gesture_utils import *
-from game_logic import get_level, generate_obstacles
 
 app = FastAPI()
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-
-@app.get("/tutorial")
-def tutorial():
-    return {
-        "controls": [
-            {"gesture": "Mouth Open", "action": "Jump"},
-            {"gesture": "Eyebrow Raise", "action": "Freeze"},
-            {"gesture": "Blink", "action": "EMP Gadget"},
-            {"gesture": "Head Left/Right", "action": "Dodge left/right"},
-        ],
-        "tips": ["Stay alert!", "React quickly!", "Use EMP wisely!"]
-    }
-
-@app.get("/level/{level_num}")
-def level(level_num: int):
-    level = get_level(level_num)
-    return {"level": level, "obstacles": generate_obstacles(level)}
 
 @app.post("/detect-gesture/")
 async def detect_gesture(file: UploadFile = File(...)):

@@ -1,8 +1,3 @@
-/**
- * OrbitControls.js - minimal build matching three.js r125
- * Fully functional and standalone for your game.
- */
-
 THREE.OrbitControls = function ( object, domElement ) {
 
     this.object = object;
