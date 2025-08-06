@@ -41,17 +41,21 @@ body {
 }
 #status {
   position: absolute;
-  top: 20px;
-  left: 30px;
-  background: rgba(255,255,255,0.7);
+  top: 80px; /* lower than the HUD, avoids overlap */
+  left: 50%;
+  transform: translateX(-50%);
+  transition: opacity 0.3s ease;
+  background: rgba(255, 255, 255, 0.7);
   padding: 0.3em 1em;
   border-radius: 8px;
   color: #222;
-  font-size: 1.1em;
-  text-shadow: none;
+  font-size: 0.9em; 
   font-weight: bold;
+  z-index: 30;
+  text-shadow: none;
   animation: neon-glow 2s infinite alternate-reverse;
 }
+
 #level {
   position: absolute;
   top: 20px;
@@ -97,4 +101,96 @@ body {
 @keyframes neon-glow {
   0% { text-shadow: 0 0 18px #00ffff, 0 0 32px #fff; }
   100% { text-shadow: 0 0 32px #00ffff, 0 0 64px #fff; }
+}
+
+#game-info {
+  display:block;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255,255,255,0.85);
+  color: #222;
+  padding: 20px 30px;
+  border-radius: 12px;
+  font-family: 'Space Mono', monospace, Arial, sans-serif;
+  max-width: 500px;
+  text-align: center;
+  z-index: 20;
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+}
+
+#game-info h2 {
+  margin-top: 0;
+  font-size: 1.8em;
+}
+
+#game-info ul {
+  text-align: left;
+  padding-left: 1.2em;
+  margin: 10px 0;
+}
+
+#game-info li {
+  margin-bottom: 6px;
+  font-size: 1em;
+}
+
+.overlay-message {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2em;
+  color: white;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 20px 30px;
+  border-radius: 10px;
+  z-index: 99;
+  text-align: center;
+  font-family: 'Orbitron', sans-serif;
+}
+
+#end-stats {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.9);
+  color: #222;
+  padding: 30px;
+  border-radius: 12px;
+  font-family: 'Space Mono', monospace, Arial, sans-serif;
+  text-align: center;
+  z-index: 100;
+  box-shadow: 0 0 20px rgba(0,0,0,0.4);
+}
+
+#end-stats h2 {
+  margin-top: 0;
+  font-size: 2em;
+}
+
+#end-stats ul {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+}
+
+#end-stats li {
+  margin: 10px 0;
+  font-size: 1.2em;
+}
+
+#end-stats button {
+  padding: 10px 20px;
+  font-size: 1em;
+  background: #3fa34d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+#end-stats button:hover {
+  background: #2b7a3b;
 }
