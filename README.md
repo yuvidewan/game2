@@ -13,8 +13,8 @@ A first-person endless runner game set in a vibrant jungle! Move through a lush,
 
 ### 1. Clone the repository
 ```bash
-git clone <repo-url>
-cd cursor_game
+git clone https://github.com/yuvidewan/game2.git
+cd game2
 ```
 
 ### 2. Set up the Python environment
